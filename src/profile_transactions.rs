@@ -1,3 +1,6 @@
+// #[macro_use]
+use lazy_static::lazy_static;
+
 use std::env;
 use bitcoincore_rpc::{Auth, Client};
 use bitcoin::hash_types::Txid;
