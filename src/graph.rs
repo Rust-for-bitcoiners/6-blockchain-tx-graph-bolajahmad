@@ -30,34 +30,28 @@ impl<T: Eq + PartialEq + Hash + Clone> Graph<T> {
     }
 
     pub fn insert_vertex(&mut self, u: T) {
-        // Insert a vertex, this will become the root node
-        assert!(!self.contains_vertex(&u), "Vertex already exists");
-
-        let mut vertex = HashMap::new();
-        vertex.insert(Rc::new(u), HashSet::<Rc<T>>::new());
-
-        self.edges = vertex;
+        // Insert a vertex, this will become the root node if no vertex exists
+        if !self.contains_vertex(&u) {
+            self.edges.insert(Rc::new(u), HashSet::<Rc<T>>::new());
+        }
     }
 
     pub fn remove_vertex(&mut self, u: &T) {
-        // todo!();
         assert!(self.contains_vertex(u), "Vertex does not exist");
         self.edges.remove(u);
     }
 
     pub fn insert_edge(&mut self, u: T, v: T) {
         if self.contains_vertex(&u) {
-            let edges: &mut HashSet<Rc<T>> = self.edges.get_mut(&u).unwrap();
-            edges.insert(Rc::new(v));
+            self.edges.get_mut(&u).unwrap().insert(Rc::new(v));
         } else {
-            let u_clone = u.clone(); // Clone u before passing it to the function
-            self.insert_vertex(u);
-            self.insert_edge(u_clone, v);
+            self.insert_vertex(u.clone());
+            self.insert_vertex(v.clone());
+            self.insert_edge(u, v);
         }
     }
 
     pub fn remove_edge(&mut self, u: &T, v: &T) {
-        // todo!();
         assert!(self.contains_edge(u, v), "Edge does not exist");
         self.edges.get_mut(u).unwrap().remove(v);
     }
@@ -93,8 +87,18 @@ impl<T: Eq + PartialEq + Hash + Clone> Graph<T> {
         contains
     }
 
+    // the neighbors return a Vec of all vertices connected to u
+    // This is very similar to the edges of a vertex
     pub fn neighbors(&self, u: &T) -> Vec<Rc<T>> {
-        todo!();
+        if self.contains_vertex(u) {
+            let mut neighbors = Vec::new();
+            for neighbor in self.edges.get(u).unwrap().iter() {
+                neighbors.push(neighbor.clone());
+            }
+            neighbors
+        } else {
+            Vec::new()
+        }
     }
 
     pub fn path_exists_between(&self, u: &T, v: &T) -> bool {
@@ -102,7 +106,22 @@ impl<T: Eq + PartialEq + Hash + Clone> Graph<T> {
         // bfs requires a queue data structure refer https://doc.rust-lang.org/std/collections/struct.VecDeque.html
         // dfs requires recursion
         // in both cases keep track of visited nodes using HashSet
-        todo!();
+        let path_exists = false;
+        let mut queue = VecDeque::from(self.neighbors(u));
+        let mut visited = HashSet::new();
+
+        while let Some(vertex) = queue.pop_front() {
+            if vertex == Rc::new(v.clone()) {
+                return true;
+            }
+
+            if !visited.contains(&vertex) {
+                visited.insert(vertex.clone());
+                queue.extend(self.neighbors(&vertex));
+            }
+        }
+
+        path_exists
     }
 }
 
@@ -155,30 +174,16 @@ mod tests {
         QuickCheck::new().quickcheck(prop as fn(i32) -> bool);
     }
 
-    // #[test]
-    // fn direct_path_exists() {
-    //     let mut graph = Graph::new();
-    //     graph.insert_edge("A", "B");
-    //     assert!(graph.path_exists_between(&"A", &"B"));
-    // }
+    #[test]
+    fn test_contains_vertex() {
+        let mut graph = Graph::new();
+        graph.insert_edge("A", "B");
+        graph.insert_edge("C", "B");
 
-    // // Test that path_exists_between returns true for indirectly connected vertices
-    // #[test]
-    // fn indirect_path_exists() {
-    //     let mut graph = Graph::new();
-    //     graph.insert_edge("A", "B");
-    //     graph.insert_edge("B", "C");
-    //     assert!(graph.path_exists_between(&"A", &"C"));
-    // }
-
-    // // Test that path_exists_between returns false when no path exists
-    // #[test]
-    // fn no_path_exists() {
-    //     let mut graph = Graph::new();
-    //     graph.insert_edge("A", "B");
-    //     graph.insert_edge("C", "D");
-    //     assert!(!graph.path_exists_between(&"A", &"C"));
-    // }
+        assert!(graph.contains_vertex(&"A"));
+        assert!(graph.contains_vertex(&"B"));
+        assert!(graph.contains_vertex(&"C"));
+    }
 
     // Test that path_exists_between returns true for a complex graph where a path exists
     #[test]
@@ -206,14 +211,28 @@ mod tests {
     }
 
     #[test]
-    fn test_contains_vertex() {
+    fn direct_path_exists() {
         let mut graph = Graph::new();
         graph.insert_edge("A", "B");
-        graph.insert_edge("C", "B");
+        assert!(graph.path_exists_between(&"A", &"B"));
+    }
 
-        assert!(graph.contains_vertex(&"A"));
-        // assert!(graph.contains_vertex(&"B"));
-        assert!(graph.contains_vertex(&"C"));
+    // Test that path_exists_between returns true for indirectly connected vertices
+    #[test]
+    fn indirect_path_exists() {
+        let mut graph = Graph::new();
+        graph.insert_edge("A", "B");
+        graph.insert_edge("B", "C");
+        assert!(graph.path_exists_between(&"A", &"C"));
+    }
+
+    // Test that path_exists_between returns false when no path exists
+    #[test]
+    fn no_path_exists() {
+        let mut graph = Graph::new();
+        graph.insert_edge("A", "B");
+        graph.insert_edge("C", "D");
+        assert!(!graph.path_exists_between(&"A", &"C"));
     }
 }
 
