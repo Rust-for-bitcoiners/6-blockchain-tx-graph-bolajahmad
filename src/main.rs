@@ -1,9 +1,6 @@
 mod graph;
 mod profile_transactions;
 
-#[macro_use]
-extern crate lazy_static;
-
 fn main() {
-    println!("Hello, world!");
+    profile_transactions::build_transaction_graph(0, 10);
 }
